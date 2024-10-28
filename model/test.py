@@ -18,7 +18,7 @@ install_package("ultralytics")
 install_package("opencv-python")
 
 # YOLOv8 model download (checking if the model already exists)
-model_filename = 'yolov8n.pt'
+model_filename = 'model/yolov8n.pt'
 if not os.path.exists(model_filename):
     print(f"Downloading {model_filename}...")
     # The model will be automatically downloaded when you instantiate the model if it doesn't exist
@@ -51,7 +51,7 @@ while True:
     normalized_frame = resized_frame / 255.0
 
     # Convert the frame to a tensor and move to the correct device (CPU or GPU)
-    input_tensor = torch.from_numpy(normalized_frame).permute(2, 0, 1).unsqueeze(0).float().to(device)  # BCHW format
+    input_tensor = torch.from_numpy(normalized_frame).permute(2, 0, 1).unsqueeze(0).float().to(device)  # Batch Channel Height Width
     
     # Run the model on the frame
     results = model.predict(input_tensor)
