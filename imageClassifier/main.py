@@ -5,16 +5,17 @@ from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
 
-img_height, img_width = 224, 224  
+img_height, img_width = 224, 224
 batch_size = 32
 
+# Data augmentation for training data
 train_datagen = ImageDataGenerator(
     rescale=1.0/255.0,
-    rotation_range=20,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    shear_range=0.2,
-    zoom_range=0.2,
+    rotation_range=30,
+    width_shift_range=0.3,
+    height_shift_range=0.3,
+    shear_range=0.3,
+    zoom_range=0.3,
     horizontal_flip=True,
     fill_mode="nearest"
 )
@@ -35,28 +36,40 @@ test_data = test_datagen.flow_from_directory(
     class_mode='categorical'
 )
 
+# Load MobileNetV2 with pretrained weights
 base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
-base_model.trainable = False 
 
+# Unfreeze the last 20 layers of the base model for fine-tuning
+for layer in base_model.layers[-20:]:
+    layer.trainable = True
+
+# Add custom classification layers
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 x = Dense(1024, activation='relu')(x)
-x = Dropout(0.5)(x)  
+x = Dropout(0.6)(x)  # Increased dropout rate to 0.6
 predictions = Dense(train_data.num_classes, activation='softmax')(x)
 
+# Construct the final model
 model = Model(inputs=base_model.input, outputs=predictions)
 
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+# Compile the model with a lower learning rate
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss='categorical_crossentropy', metrics=['accuracy'])
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+# Early stopping with increased patience
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
-epochs = 10
+# Train the model
+steps_per_epoch = 31
+epochs = 20
 history = model.fit(
     train_data,
+    steps_per_epoch=steps_per_epoch,
     epochs=epochs,
-    validation_data=test_data
+    validation_data=test_data,
+    callbacks=[early_stopping]
 )
 
+# Evaluate and save the model
 model.evaluate(test_data)
-
 model.save("asl_classifier.h5")
