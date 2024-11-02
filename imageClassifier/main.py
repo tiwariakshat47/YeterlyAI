@@ -60,8 +60,8 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss='cate
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
 # Train the model
-steps_per_epoch = 31
-epochs = 20
+steps_per_epoch = 50
+epochs = 15
 history = model.fit(
     train_data,
     steps_per_epoch=steps_per_epoch,
