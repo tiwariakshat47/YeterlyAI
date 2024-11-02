@@ -1,131 +1,62 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-import os
-import cv2  # Import OpenCV for camera capture
-import numpy as np
-from PIL import Image  # Import PIL to convert images
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
+from tensorflow.keras.models import Model
+from tensorflow.keras.callbacks import EarlyStopping
 
-class SimpleCNN(nn.Module):
-    def __init__(self, num_classes):
-        super(SimpleCNN, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1)
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
-        
-        self.fc1 = nn.Linear(32 * 16 * 16, 128)
-        self.dropout1 = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(128, num_classes)
-        self.dropout2 = nn.Dropout(0.5)
+img_height, img_width = 224, 224  
+batch_size = 32
 
-    def forward(self, x):
-        x = self.pool(nn.functional.relu(self.conv1(x)))
-        x = self.pool(nn.functional.relu(self.conv2(x)))
-        x = x.view(-1, 32 * 16 * 16)
-        x = self.dropout1(nn.functional.relu(self.fc1(x)))
-        x = self.fc2(x)
-        return x
+train_datagen = ImageDataGenerator(
+    rescale=1.0/255.0,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode="nearest"
+)
 
-# Define transforms with updated normalization for RGB
-transform = transforms.Compose([
-    transforms.Resize((64, 64)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-])
+test_datagen = ImageDataGenerator(rescale=1.0/255.0)
 
-DATA_PATH = "dataset"
-train_dir = os.path.join(DATA_PATH, "train")
-test_dir = os.path.join(DATA_PATH, "test")
+train_data = train_datagen.flow_from_directory(
+    'dataset/train',
+    target_size=(img_height, img_width),
+    batch_size=batch_size,
+    class_mode='categorical'
+)
 
-train_data = datasets.ImageFolder(root=train_dir, transform=transform)
-test_data = datasets.ImageFolder(root=test_dir, transform=transform)
+test_data = test_datagen.flow_from_directory(
+    'dataset/test',
+    target_size=(img_height, img_width),
+    batch_size=batch_size,
+    class_mode='categorical'
+)
 
-train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=32, shuffle=False)
+base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
+base_model.trainable = False 
 
-num_classes = len(train_data.classes)
-model = SimpleCNN(num_classes=num_classes)
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+x = Dense(1024, activation='relu')(x)
+x = Dropout(0.5)(x)  
+predictions = Dense(train_data.num_classes, activation='softmax')(x)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
+model = Model(inputs=base_model.input, outputs=predictions)
 
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-num_epochs = 10
-for epoch in range(num_epochs):
-    model.train()
-    running_loss = 0.0
-    
-    for inputs, labels in train_loader:
-        inputs, labels = inputs.to(device), labels.to(device)
-        
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        
-        running_loss += loss.item()
-    
-    print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {running_loss / len(train_loader):.4f}')
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
-model.eval()
-correct = 0
-total = 0
+epochs = 10
+history = model.fit(
+    train_data,
+    epochs=epochs,
+    validation_data=test_data
+)
 
-with torch.no_grad():
-    for inputs, labels in test_loader:
-        inputs, labels = inputs.to(device), labels.to(device)
-        outputs = model(inputs)
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
+model.evaluate(test_data)
 
-print(f'Accuracy of the model on the test images: {100 * correct / total:.2f}%')
-
-# Capture an image from the camera and classify it
-def classify_camera_image():
-    # Initialize camera
-    cap = cv2.VideoCapture(0)
-    print("Press 's' to take a picture or 'q' to quit.")
-    
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to grab frame.")
-            break
-        cv2.imshow("Capture", frame)
-
-        # Wait for key press
-        key = cv2.waitKey(1)
-        
-        if key == ord('s'):  # Press 's' to capture and classify
-            # Convert OpenCV image (NumPy array) to PIL image
-            img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(img)
-            
-            # Apply the transform
-            img = transform(img).unsqueeze(0).to(device)
-            
-            # Classify the image
-            model.eval()
-            with torch.no_grad():
-                output = model(img)
-                _, predicted = torch.max(output, 1)
-                label = train_data.classes[predicted.item()]
-                print(f"Predicted label: {label}")
-
-            break
-        
-        elif key == ord('q'):  # Press 'q' to quit
-            break
-
-    # Release resources
-    cap.release()
-    cv2.destroyAllWindows()
-
-# Call the function to capture and classify an image
-classify_camera_image()
+model.save("asl_classifier.h5")
