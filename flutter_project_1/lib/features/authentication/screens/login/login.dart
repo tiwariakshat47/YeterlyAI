@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project_1/features/translation/image_selection.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:flutter_project_1/utils/constants/image_strings.dart';
 import 'package:flutter_project_1/utils/helpers/helper_functions.dart';
@@ -64,7 +65,20 @@ class LoginScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 32.0),
                       /// Sign-In Button
-                      SizedBox(width: double.infinity, child: ElevatedButton(onPressed: (){}, child: const Text('Sign In'))),
+                      SizedBox(width: double.infinity, child: ElevatedButton(
+                          onPressed: (){
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) {
+                                  return ImageSelection();
+                                },
+                              ),
+                            );
+                          },
+                          child: const Text('Sign In')
+                        )
+                      ),
                       const SizedBox(height: 16.0),
                       /// Create Account Button
                       SizedBox(width: double.infinity, child: OutlinedButton(onPressed: (){}, child: const Text('Create Account'))),
