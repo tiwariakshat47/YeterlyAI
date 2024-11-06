@@ -39,15 +39,18 @@ test_data = test_datagen.flow_from_directory(
 # Load MobileNetV2 with pretrained weights
 base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
 
+# (Look at gradual unfreezing) !!!!
+
 # Unfreeze the last 20 layers of the base model for fine-tuning
 for layer in base_model.layers[-20:]:
     layer.trainable = True
 
-# Add custom classification layers
+# Add custom classification layers 
+#Try adding layers !!!!
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 x = Dense(1024, activation='relu')(x)
-x = Dropout(0.6)(x)  # Increased dropout rate to 0.6
+x = Dropout(0.2)(x)  # Increased dropout rate to 0.2
 predictions = Dense(train_data.num_classes, activation='softmax')(x)
 
 # Construct the final model
@@ -59,7 +62,11 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss='cate
 # Early stopping with increased patience
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
-# Train the model
+# Train the model --> dynamically calculate steps per epoch: length of dataset divided by batch size !!!!
+
+
+# Calc accuracy for diff images and display
+
 steps_per_epoch = 80
 epochs = 20
 history = model.fit(
