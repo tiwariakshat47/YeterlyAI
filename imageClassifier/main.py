@@ -4,12 +4,14 @@ from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+import matplotlib.pyplot as plt
 
 # Constants
 img_height, img_width = 224, 224
 batch_size = 32
-initial_epochs = 10
-fine_tune_epochs = 10
+initial_epochs = 15
+fine_tune_epochs = 15  # Increased epochs for fine-tuning
+unfreeze_layers = 30   # Increase unfreeze layers for fine-tuning
 
 # Data augmentation for training data
 train_datagen = ImageDataGenerator(
@@ -51,9 +53,7 @@ base_model.trainable = False  # Initially freeze all layers
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 x = Dense(1024, activation='relu')(x)
-x = Dropout(0.3)(x)  # Increased dropout rate
-x = Dense(512, activation='relu')(x)  # Additional dense layer
-x = Dropout(0.2)(x)
+x = Dense(512, activation='relu')(x)  # Removed dropout layer here
 predictions = Dense(train_data.num_classes, activation='softmax')(x)
 
 # Construct the final model
@@ -76,13 +76,12 @@ history = model.fit(
     callbacks=[early_stopping, reduce_lr]
 )
 
-# Gradual unfreezing of the last few layers
-unfreeze_layers = 20
+# Gradually unfreezing more layers for fine-tuning
 for layer in base_model.layers[-unfreeze_layers:]:
     layer.trainable = True
 
 # Recompile the model with a lower learning rate for fine-tuning
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss='categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5), loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Fine-tuning with unfrozen layers
 fine_tune_history = model.fit(
@@ -100,3 +99,34 @@ print(f"Test Accuracy: {test_acc * 100:.2f}%")
 
 # Save the final model
 model.save("asl_classifier_finetuned.h5")
+
+# Plotting training history
+def plot_training(history, fine_tune_history):
+    # Combine training histories
+    acc = history.history['accuracy'] + fine_tune_history.history['accuracy']
+    val_acc = history.history['val_accuracy'] + fine_tune_history.history['val_accuracy']
+    loss = history.history['loss'] + fine_tune_history.history['loss']
+    val_loss = history.history['val_loss'] + fine_tune_history.history['val_loss']
+
+    epochs_range = range(len(acc))
+
+    plt.figure(figsize=(12, 8))
+    
+    # Accuracy plot
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs_range, acc, label='Training Accuracy')
+    plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+    plt.legend(loc='lower right')
+    plt.title('Training and Validation Accuracy')
+
+    # Loss plot
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs_range, loss, label='Training Loss')
+    plt.plot(epochs_range, val_loss, label='Validation Loss')
+    plt.legend(loc='upper right')
+    plt.title('Training and Validation Loss')
+
+    plt.show()
+
+# Plotting the training results
+plot_training(history, fine_tune_history)
