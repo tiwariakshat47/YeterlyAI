@@ -18,6 +18,7 @@ class AppTextTheme {
 
     labelLarge: const TextStyle().copyWith(fontSize: 12.0, fontWeight: FontWeight.normal, color: Colors.black),
     labelMedium: const TextStyle().copyWith(fontSize: 12.0, fontWeight: FontWeight.normal, color: Colors.black),
+    labelSmall: const TextStyle().copyWith(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.white),
   );
 
   static TextTheme darkTextTheme = TextTheme(
@@ -35,5 +36,6 @@ class AppTextTheme {
 
     labelLarge: const TextStyle().copyWith(fontSize: 12.0, fontWeight: FontWeight.normal, color: Colors.white),
     labelMedium: const TextStyle().copyWith(fontSize: 12.0, fontWeight: FontWeight.normal, color: Colors.white),
+    labelSmall: const TextStyle().copyWith(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.white),
   );
 }

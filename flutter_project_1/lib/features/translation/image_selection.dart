@@ -1,29 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project_1/features/data_collection/data_collection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:async';
 import 'dart:io';
-
-// class ImageSelection extends StatelessWidget {
-//   const ImageSelection({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text("Image Selection"),
-//         leading: IconButton(
-//           onPressed: () {
-//             Navigator.pop(context);
-//           },
-//           icon: const Icon(Icons.arrow_back),
-//         ),
-//       ),
-//       body: const Center(
-//         child: Text('Image Selection Screen'),
-//       ),
-//     );
-//   }
-// }
 
 class ImageSelection extends StatefulWidget {
   const ImageSelection({super.key});
@@ -71,15 +50,28 @@ class _ImageSelectionState extends State<ImageSelection> {
       body: Center(
         child: image == null ? Text("No image selected") : Image.file(image!),
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return DataCollectionScreen();
+                  },
+                ),
+              );
+            },
+            tooltip: "Upload Photo for Data Collection",
+            child: Icon(Icons.file_upload_outlined),
+          ),
           FloatingActionButton(
             onPressed: takePhoto,
             tooltip: "Take Photo",
             child: Icon(Icons.camera),
           ),
-          SizedBox(height: 10),
           FloatingActionButton(
             onPressed: chooseFromGallery,
             tooltip: "Choose from Gallery",

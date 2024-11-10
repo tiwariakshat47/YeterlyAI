@@ -76,12 +76,15 @@ class LoginScreen extends StatelessWidget {
                               ),
                             );
                           },
-                          child: const Text('Sign In')
-                        )
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
+                          ),
+                          child: Text('Sign In', style: Theme.of(context).textTheme.labelSmall)
+                        ),
                       ),
                       const SizedBox(height: 16.0),
                       /// Create Account Button
-                      SizedBox(width: double.infinity, child: OutlinedButton(onPressed: (){}, child: const Text('Create Account'))),
+                      SizedBox(width: double.infinity, child: OutlinedButton(onPressed: (){}, child: Text('Create Account', style: Theme.of(context).textTheme.bodySmall))),
                       const SizedBox(height: 32.0),
                     ],
                   ),

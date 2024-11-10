@@ -12,6 +12,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
@@ -19,4 +20,8 @@ class App extends StatelessWidget {
     );
   }
 }
+
+/// data collection functionality, user chooses list of alphabet
+/// can choose specific letter and add image data
+/// access camera info: resolution, etc. --> save to user info
 
