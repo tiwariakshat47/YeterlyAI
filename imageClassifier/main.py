@@ -1,166 +1,149 @@
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, BatchNormalization
-from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, LearningRateScheduler
-import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import models, transforms
+from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
 from sklearn.metrics import confusion_matrix, classification_report
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Constants
 img_height, img_width = 224, 224
 batch_size = 32
-initial_epochs = 20
-fine_tune_epochs = 15
-unfreeze_layers = 20  # Gradually unfreeze layers for fine-tuning
+epochs = 20
+learning_rate = 1e-4
 
-# Learning rate scheduler
-def lr_scheduler(epoch, lr):
-    return lr * 0.95 if epoch > 5 else lr
+# Data augmentation and preprocessing
+train_transforms = transforms.Compose([
+    transforms.RandomResizedCrop((img_height, img_width)),
+    transforms.RandomRotation(20),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+])
 
-lr_callback = LearningRateScheduler(lr_scheduler)
+val_test_transforms = transforms.Compose([
+    transforms.Resize((img_height, img_width)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+])
 
-# Data augmentation and preprocessing with MobileNetV2
-train_datagen = ImageDataGenerator(
-    preprocessing_function=tf.keras.applications.mobilenet_v2.preprocess_input,
-    rotation_range=30,
-    width_shift_range=0.3,
-    height_shift_range=0.3,
-    shear_range=0.3,
-    zoom_range=0.3,
-    horizontal_flip=True,
-    fill_mode='nearest',
-    validation_split=0.2  # 80% training, 20% validation
+# Load datasets
+train_dataset = ImageFolder(root='dataset/train', transform=train_transforms)
+val_size = int(0.2 * len(train_dataset))
+train_size = len(train_dataset) - val_size
+train_data, val_data = torch.utils.data.random_split(train_dataset, [train_size, val_size])
+
+test_dataset = ImageFolder(root='dataset/test', transform=val_test_transforms)
+
+train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+# Check class names
+class_names = train_dataset.classes
+print("Classes:", class_names)
+
+# Model setup with ResNet-50
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = models.resnet50(pretrained=True)
+num_ftrs = model.fc.in_features
+model.fc = nn.Sequential(
+    nn.Linear(num_ftrs, 512),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+    nn.Linear(512, len(class_names)),
+    nn.Softmax(dim=1)
 )
+model = model.to(device)
 
-test_datagen = ImageDataGenerator(
-    preprocessing_function=tf.keras.applications.mobilenet_v2.preprocess_input
-)
+# Loss and optimizer
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-# Load train, validation, and test datasets
-train_data = train_datagen.flow_from_directory(
-    'dataset/train',
-    target_size=(img_height, img_width),
-    batch_size=batch_size,
-    class_mode='categorical',
-    subset='training'
-)
+# Training and validation loop
+def train_model(model, train_loader, val_loader, epochs):
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        correct = 0
 
-validation_data = train_datagen.flow_from_directory(
-    'dataset/train',
-    target_size=(img_height, img_width),
-    batch_size=batch_size,
-    class_mode='categorical',
-    subset='validation'
-)
+        # Training loop
+        for inputs, labels in train_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
 
-test_data = test_datagen.flow_from_directory(
-    'dataset/test',
-    target_size=(img_height, img_width),
-    batch_size=batch_size,
-    class_mode='categorical',
-    shuffle=False
-)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
 
-print("Classes:", train_data.class_indices)
+            running_loss += loss.item() * inputs.size(0)
+            _, preds = torch.max(outputs, 1)
+            correct += torch.sum(preds == labels.data)
 
-# Load MobileNetV2 with pretrained weights
-base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
-base_model.trainable = False  # Freeze all layers initially
+        epoch_loss = running_loss / len(train_loader.dataset)
+        epoch_acc = correct.double() / len(train_loader.dataset)
+        
+        print(f"Epoch {epoch+1}/{epochs}, Training loss: {epoch_loss:.4f}, Training accuracy: {epoch_acc:.4f}")
 
-# Add custom classification layers
-x = base_model.output
-x = GlobalAveragePooling2D()(x)
-x = Dense(1024, activation='relu')(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-x = Dense(512, activation='relu')(x)
-x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-predictions = Dense(train_data.num_classes, activation='softmax')(x)
+        # Validation loop
+        model.eval()
+        val_loss = 0.0
+        val_correct = 0
 
-# Construct the final model
-model = Model(inputs=base_model.input, outputs=predictions)
+        with torch.no_grad():
+            for inputs, labels in val_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
 
-# Compile the model with an initial low learning rate
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss='categorical_crossentropy', metrics=['accuracy'])
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                val_loss += loss.item() * inputs.size(0)
+                _, preds = torch.max(outputs, 1)
+                val_correct += torch.sum(preds == labels.data)
 
-# Callbacks for training
-model_checkpoint = ModelCheckpoint('best_model.keras', save_best_only=True, monitor='val_accuracy', mode='max')
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6)
+        val_loss /= len(val_loader.dataset)
+        val_acc = val_correct.double() / len(val_loader.dataset)
+        
+        print(f"Validation loss: {val_loss:.4f}, Validation accuracy: {val_acc:.4f}")
 
-# Train the model with frozen layers
-history = model.fit(
-    train_data,
-    steps_per_epoch=train_data.samples // batch_size,
-    epochs=initial_epochs,
-    validation_data=validation_data,
-    validation_steps=validation_data.samples // batch_size,
-    callbacks=[early_stopping, reduce_lr, model_checkpoint, lr_callback]
-)
+    return model
 
-# Gradually unfreeze layers for fine-tuning
-base_model.trainable = True
-for layer in base_model.layers[:-unfreeze_layers]:
-    layer.trainable = False
+# Train the model
+model = train_model(model, train_loader, val_loader, epochs)
 
-# Recompile the model for fine-tuning with a lower learning rate
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5), loss='categorical_crossentropy', metrics=['accuracy'])
+# Test the model
+def test_model(model, test_loader):
+    model.eval()
+    test_loss = 0.0
+    correct = 0
+    all_preds = []
+    all_labels = []
 
-# Fine-tuning with unfrozen layers
-fine_tune_history = model.fit(
-    train_data,
-    steps_per_epoch=train_data.samples // batch_size,
-    epochs=fine_tune_epochs,
-    validation_data=validation_data,
-    validation_steps=validation_data.samples // batch_size,
-    callbacks=[early_stopping, reduce_lr, model_checkpoint, lr_callback]
-)
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
 
-# Evaluate the model on the test set
-test_loss, test_acc = model.evaluate(test_data)
-print(f"Test Accuracy: {test_acc * 100:.2f}%")
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            test_loss += loss.item() * inputs.size(0)
+            _, preds = torch.max(outputs, 1)
+            correct += torch.sum(preds == labels.data)
 
-# Save the final fine-tuned model
-model.save("asl_classifier_finetuned.keras")
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
 
-# Plotting training history
-def plot_training(history, fine_tune_history):
-    acc = history.history['accuracy'] + fine_tune_history.history['accuracy']
-    val_acc = history.history['val_accuracy'] + fine_tune_history.history['val_accuracy']
-    loss = history.history['loss'] + fine_tune_history.history['loss']
-    val_loss = history.history['val_loss'] + fine_tune_history.history['val_loss']
+    test_loss /= len(test_loader.dataset)
+    test_acc = correct.double() / len(test_loader.dataset)
+    
+    print(f"Test loss: {test_loss:.4f}, Test accuracy: {test_acc:.4f}")
+    
+    # Confusion matrix and classification report
+    print("\nConfusion Matrix")
+    print(confusion_matrix(all_labels, all_preds))
+    print("\nClassification Report")
+    print(classification_report(all_labels, all_preds, target_names=class_names))
 
-    epochs_range = range(len(acc))
-
-    plt.figure(figsize=(12, 8))
-
-    # Accuracy plot
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs_range, acc, label='Training Accuracy')
-    plt.plot(epochs_range, val_acc, label='Validation Accuracy')
-    plt.legend(loc='lower right')
-    plt.title('Training and Validation Accuracy')
-
-    # Loss plot
-    plt.subplot(1, 2, 2)
-    plt.plot(epochs_range, loss, label='Training Loss')
-    plt.plot(epochs_range, val_loss, label='Validation Loss')
-    plt.legend(loc='upper right')
-    plt.title('Training and Validation Loss')
-
-    plt.show()
-
-# Plotting the training results
-plot_training(history, fine_tune_history)
-
-# Confusion Matrix and Classification Report
-Y_pred = model.predict(test_data)
-y_pred = np.argmax(Y_pred, axis=1)
-print('Confusion Matrix')
-print(confusion_matrix(test_data.classes, y_pred))
-print('Classification Report')
-target_names = list(test_data.class_indices.keys())
-print(classification_report(test_data.classes, y_pred, target_names=target_names))
+# Evaluate on test data
+test_model(model, test_loader)
