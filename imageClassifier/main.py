@@ -24,11 +24,11 @@ lr_callback = LearningRateScheduler(lr_scheduler)
 # Data augmentation and preprocessing with MobileNetV2
 train_datagen = ImageDataGenerator(
     preprocessing_function=tf.keras.applications.mobilenet_v2.preprocess_input,
-    rotation_range=30,
-    width_shift_range=0.3,
-    height_shift_range=0.3,
-    shear_range=0.3,
-    zoom_range=0.3,
+    rotation_range=20,  # Reduced rotation
+    width_shift_range=0.2,  # Reduced width shift
+    height_shift_range=0.2,  # Reduced height shift
+    shear_range=0.2,  # Reduced shear
+    zoom_range=0.2,  # Reduced zoom
     horizontal_flip=True,
     fill_mode='nearest',
     validation_split=0.2  # 80% training, 20% validation
@@ -69,15 +69,15 @@ print("Classes:", train_data.class_indices)
 base_model = MobileNetV2(input_shape=(img_height, img_width, 3), include_top=False, weights='imagenet')
 base_model.trainable = False  # Freeze all layers initially
 
-# Add custom classification layers
+# Add custom classification layers with adjusted dropout rates and dense units
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
-x = Dense(1024, activation='relu')(x)
+x = Dense(512, activation='relu')(x)  # Reduced units
 x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
-x = Dense(512, activation='relu')(x)
+x = Dropout(0.6)(x)  # Increased Dropout
+x = Dense(256, activation='relu')(x)  # Reduced units
 x = BatchNormalization()(x)
-x = Dropout(0.5)(x)
+x = Dropout(0.6)(x)  # Increased Dropout
 predictions = Dense(train_data.num_classes, activation='softmax')(x)
 
 # Construct the final model
@@ -88,7 +88,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4), loss='cate
 
 # Callbacks for training
 model_checkpoint = ModelCheckpoint('best_model.keras', save_best_only=True, monitor='val_accuracy', mode='max')
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)  # Stricter patience
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=1e-6)
 
 # Train the model with frozen layers
@@ -102,9 +102,8 @@ history = model.fit(
 )
 
 # Gradually unfreeze layers for fine-tuning
-base_model.trainable = True
-for layer in base_model.layers[:-unfreeze_layers]:
-    layer.trainable = False
+for layer in base_model.layers[-unfreeze_layers // 2:]:  # Unfreeze half of the last 20 layers initially
+    layer.trainable = True
 
 # Recompile the model for fine-tuning with a lower learning rate
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5), loss='categorical_crossentropy', metrics=['accuracy'])
