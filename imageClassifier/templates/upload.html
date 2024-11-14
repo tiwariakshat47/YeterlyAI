@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Classifier</title>
+</head>
+<body>
+    <h1>ASL Classifier</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Upload</button>
+    </form>
+
+    {% if prediction %}
+        <h2>Prediction: {{ prediction }}</h2>
+    {% else %}
+        <h2>Prediction: Enter Prediction</h2>  <!-- Placeholder for prediction -->
+    {% endif %}
+
+    {% if image_url %}
+        <h3>Uploaded Image:</h3>
+        <img src="{{ image_url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+    {% endif %}
+</body>
+</html>
