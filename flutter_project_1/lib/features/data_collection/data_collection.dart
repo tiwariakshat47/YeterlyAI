@@ -66,6 +66,19 @@ class _DataCollectionScreenState extends State<DataCollectionScreen> {
                 ),
                 child: Text("Upload Image", style: Theme.of(context).textTheme.labelSmall),
               ),
+              ElevatedButton(
+                onPressed: () {},
+                style: ButtonStyle(
+                  backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
+                  padding: WidgetStatePropertyAll(EdgeInsets.only(
+                    left: 15.0,
+                    top: 10.0,
+                    right: 15.0,
+                    bottom: 10.0,
+                  )),
+                ),
+                child: Text("Submit", style: Theme.of(context).textTheme.labelSmall),
+              ),
             ],
           ),
         ),
@@ -111,7 +124,7 @@ class _LetterDropdownMenuState extends State<LetterDropdownMenu> {
                 label: value,
                 style: ButtonStyle(
                   alignment: Alignment.center,
-                  padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 75.0)),
+                  padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 90.0)),
                   textStyle: WidgetStatePropertyAll(Theme.of(context).textTheme.titleLarge),
                 ),
               );
