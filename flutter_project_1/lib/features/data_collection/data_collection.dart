@@ -15,12 +15,27 @@ class _DataCollectionScreenState extends State<DataCollectionScreen> {
   File? image;
   final ImagePicker picker = ImagePicker();
 
+  bool _isImagePickerActive = false;
   Future<void> chooseFromGallery() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        image = File(pickedFile.path);
-      });
+    if (_isImagePickerActive) {
+      print("Image picker is already active. Ignoring this request.");
+      return;
+    }
+    _isImagePickerActive = true;
+    try {
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          image = File(pickedFile.path);
+          print("Image selected");
+        });
+      } else {
+        print("No image selected.");
+      }
+    } catch (e) {
+      print("Error while picking image: $e");
+    } finally {
+      _isImagePickerActive = false; // Reset the flag
     }
   }
 
