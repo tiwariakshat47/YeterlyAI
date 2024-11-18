@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "205804755562",
+    "project_id": "yeterlyai-sign2text",
+    "storage_bucket": "yeterlyai-sign2text.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205804755562:android:9b2a2db3f7f55a7b090813",
+        "android_client_info": {
+          "package_name": "com.yeterlyai.sign2text"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC0QkOiVrtqXbOqsqQH_2tGC1HmIcP56eg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
