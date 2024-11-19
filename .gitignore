@@ -1,0 +1,7 @@
+# .gitignore
+.env
+firebase/serviceAccountKey.json
+instance/config.py
+*.h5
+venv/
+__pycache__/
