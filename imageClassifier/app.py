@@ -47,5 +47,33 @@ def upload_file():
 
     return render_template('upload.html', prediction=prediction, image_url=image_url)
 
+@app.route('/', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return "No file part", 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return "No selected file", 400
+
+    # Save the uploaded file temporarily
+    img_path = os.path.join("static", file.filename)
+    file.save(img_path)
+
+    # Preprocess the image
+    img = image.load_img(img_path, target_size=(IMG_HEIGHT, IMG_WIDTH))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize the image
+
+    # Make prediction
+    predictions = model.predict(img_array)
+    predicted_class = class_names[np.argmax(predictions)]
+
+    # Clean up temporary image file
+    os.remove(img_path)
+
+    return predicted_class  # Return prediction as plain text
+
+
 if __name__ == "__main__":
     app.run(debug=True)
