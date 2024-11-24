@@ -42,7 +42,8 @@ class _ImageSelectionState extends State<ImageSelection> {
   }
 
   Future<void> sendImageToServer(Uint8List imageBytes, String fileName) async {
-  const String url = "http://127.0.0.1:5000/";  // Ensure this is correct
+  const String url = "http://127.0.0.1:5000/"; // Ensure the Flask server is running here
+  print("Starting image upload...");
 
   try {
     final request = http.MultipartRequest("POST", Uri.parse(url));
@@ -54,17 +55,24 @@ class _ImageSelectionState extends State<ImageSelection> {
       filename: fileName,
     ));
 
+    print("Sending request...");
     final response = await request.send();
 
+    print("Response received with status: ${response.statusCode}");
     if (response.statusCode == 200) {
-      print('Server response: ${await response.stream.bytesToString()}');
+      final responseBody = await response.stream.bytesToString();
+      print("Prediction result: $responseBody");
+      setState(() {
+        predictionResult = responseBody; // Update prediction result
+      });
     } else {
-      print('Error: ${response.statusCode}');
+      print("Error from server: ${response.statusCode}");
     }
   } catch (e) {
-    print('Failed to connect to the server: $e');
+    print("Failed to connect to the server: $e");
   }
 }
+
 
 
 
