@@ -1,9 +1,9 @@
+import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_project_1/features/data_collection/data_collection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
-import 'dart:async';
-import 'dart:io';
 
 class ImageSelection extends StatefulWidget {
   const ImageSelection({super.key});
@@ -13,7 +13,7 @@ class ImageSelection extends StatefulWidget {
 }
 
 class _ImageSelectionState extends State<ImageSelection> {
-  File? image;
+  Uint8List? imageBytes; // Use Uint8List for web compatibility
   final ImagePicker picker = ImagePicker();
   String? predictionResult;
 
@@ -21,10 +21,11 @@ class _ImageSelectionState extends State<ImageSelection> {
     final pickedFile = await picker.pickImage(source: ImageSource.camera);
 
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes(); // Read file as bytes
       setState(() {
-        image = File(pickedFile.path);
+        imageBytes = bytes;
       });
-      await sendImageToServer(image!);
+      await sendImageToServer(bytes, pickedFile.name);
     }
   }
 
@@ -32,46 +33,41 @@ class _ImageSelectionState extends State<ImageSelection> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes(); // Read file as bytes
       setState(() {
-        image = File(pickedFile.path);
+        imageBytes = bytes;
       });
-      await sendImageToServer(image!);
+      await sendImageToServer(bytes, pickedFile.name);
     }
   }
 
-  Future<void> sendImageToServer(File imageFile) async {
-    const String url = "http://127.0.0.1:5000/"; // Flask server URL
+  Future<void> sendImageToServer(Uint8List imageBytes, String fileName) async {
+  const String url = "http://127.0.0.1:5000/";  // Ensure this is correct
+
+  try {
     final request = http.MultipartRequest("POST", Uri.parse(url));
 
-    // Attach the file
-    request.files.add(
-      await http.MultipartFile.fromPath(
-        'file', // The name of the key in Flask's `request.files`
-        imageFile.path,
-      ),
-    );
+    // Attach the file as bytes
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      imageBytes,
+      filename: fileName,
+    ));
 
-    try {
-      // Send the request
-      final response = await request.send();
+    final response = await request.send();
 
-      if (response.statusCode == 200) {
-        // Read the response
-        final responseBody = await response.stream.bytesToString();
-        setState(() {
-          predictionResult = responseBody;
-        });
-      } else {
-        setState(() {
-          predictionResult = "Error: ${response.statusCode}";
-        });
-      }
-    } catch (e) {
-      setState(() {
-        predictionResult = "Failed to connect to the server: $e";
-      });
+    if (response.statusCode == 200) {
+      print('Server response: ${await response.stream.bytesToString()}');
+    } else {
+      print('Error: ${response.statusCode}');
     }
+  } catch (e) {
+    print('Failed to connect to the server: $e');
   }
+}
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +85,9 @@ class _ImageSelectionState extends State<ImageSelection> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            image == null
+            imageBytes == null
                 ? const Text("No image selected")
-                : Image.file(image!, height: 200),
+                : Image.memory(imageBytes!, height: 200), // Display image from bytes
             const SizedBox(height: 16.0),
             predictionResult == null
                 ? const Text("No prediction yet")

@@ -1,79 +1,76 @@
 import os
 import numpy as np
-from flask import Flask, request, render_template
+from flask import Flask, request
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
+from flask_cors import CORS
+import logging
 
 # Initialize Flask app
 app = Flask(__name__)
-
+CORS(app)
 # Load the trained model
 model = load_model("asl_classifier.h5")
 
 # Define the image size for the model
 IMG_HEIGHT, IMG_WIDTH = 224, 224
 
-# Class names (ensure this matches your directory structure)
+# Class names (ensure this matches your dataset directory structure)
 class_names = sorted(os.listdir('dataset/train'))
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
-    prediction = None
-    image_url = None  # Initialize image_url
-    if request.method == 'POST':
-        # Check if a file was uploaded
-        if 'file' not in request.files:
-            return "No file part"
+    #for testing:
+    # Print a message when a POST request is received
+    app.logger.debug("Received a POST request")
 
-        file = request.files['file']
-        if file.filename == '':
-            return "No selected file"
-
-        # Save the uploaded file temporarily
-        img_path = os.path.join("static", file.filename)
-        file.save(img_path)
-
-        # Preprocess the image
-        img = image.load_img(img_path, target_size=(IMG_HEIGHT, IMG_WIDTH))
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize the image
-
-        # Make prediction
-        predictions = model.predict(img_array)
-        predicted_class = class_names[np.argmax(predictions)]
-
-        prediction = predicted_class
-        image_url = f"/{img_path}"  # Set the URL for the image to display
-
-    return render_template('upload.html', prediction=prediction, image_url=image_url)
-
-@app.route('/', methods=['POST'])
-def upload_file():
     if 'file' not in request.files:
+        app.logger.error("No file part")
         return "No file part", 400
 
     file = request.files['file']
     if file.filename == '':
+        app.logger.error("No selected file")
         return "No selected file", 400
 
-    # Save the uploaded file temporarily
-    img_path = os.path.join("static", file.filename)
-    file.save(img_path)
+    # For testing, just print the file name
+    app.logger.debug(f"File received: {file.filename}")
 
-    # Preprocess the image
-    img = image.load_img(img_path, target_size=(IMG_HEIGHT, IMG_WIDTH))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize the image
+    return "File received"
 
-    # Make prediction
-    predictions = model.predict(img_array)
-    predicted_class = class_names[np.argmax(predictions)]
 
-    # Clean up temporary image file
-    os.remove(img_path)
 
-    return predicted_class  # Return prediction as plain text
 
+
+    # if 'file' not in request.files:
+    #     app.logger.error("No file part")
+    #     return "No file part", 400
+
+    # file = request.files['file']
+    # if file.filename == '':
+    #     app.logger.error("No selected file")
+    #     return "No selected file", 400
+
+    # img_path = os.path.join("static", file.filename)
+    # file.save(img_path)
+    # app.logger.debug(f"File saved to: {img_path}")
+
+    # try:
+    #     # Preprocess the image
+    #     img = image.load_img(img_path, target_size=(IMG_HEIGHT, IMG_WIDTH))
+    #     img_array = image.img_to_array(img)
+    #     img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize the image
+
+    #     # Make prediction
+    #     predictions = model.predict(img_array)
+    #     predicted_class = class_names[np.argmax(predictions)]
+    # finally:
+    #     # Ensure temporary file is cleaned up
+    #     if os.path.exists(img_path):
+    #         os.remove(img_path)
+
+    # # Return prediction as plain text
+    # return predicted_class
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
