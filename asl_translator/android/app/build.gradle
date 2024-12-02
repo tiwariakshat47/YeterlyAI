@@ -1,44 +1,34 @@
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
-        localProperties.load(reader)
-    }
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
 }
-
-def flutterRoot = localProperties.getProperty('flutter.sdk')
-if (flutterRoot == null) {
-    throw GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
-}
-
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-apply plugin: 'com.google.gms.google-services'
 
 android {
-    namespace "com.yeterlyai.sign2text"
-    compileSdkVersion flutter.compileSdkVersion
+    namespace = "com.yeterlyai.sign2text"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
         jvmTarget = '17'
     }
 
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-    }
-
     defaultConfig {
-        applicationId "com.yeterlyai.sign2text"
-        minSdkVersion 21
-        targetSdkVersion flutter.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        applicationId = "com.yeterlyai.sign2text"
+        minSdk = 23
+        targetSdk = 33
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86_64'
+        }
     }
 
     buildTypes {
@@ -46,13 +36,40 @@ android {
             signingConfig signingConfigs.debug
         }
     }
-}
 
-flutter {
-    source '../..'
+    aaptOptions {
+        noCompress 'tflite'
+    }
+
+    lint {
+        disable 'InvalidPackage'
+    }
+
+    // Add this configuration to handle the duplicate classes
+    configurations.all {
+        resolutionStrategy {
+            force 'com.google.ai.edge.litert:litert:1.0.1'
+            force 'com.google.ai.edge.litert:litert-api:1.0.1'
+            exclude group: 'org.tensorflow', module: 'tensorflow-lite'
+            exclude group: 'org.tensorflow', module: 'tensorflow-lite-api'
+        }
+    }
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:32.7.2')
+    implementation platform('com.google.firebase:firebase-bom:33.6.0')
     implementation 'com.google.firebase:firebase-analytics'
+
+    // Use specific version numbers instead of '+'
+    implementation 'com.google.ai.edge.litert:litert:1.0.1'
+    implementation 'com.google.android.gms:play-services-tflite-java:16.3.0'
+    implementation 'com.google.android.gms:play-services-tflite-support:16.3.0'
+}
+
+sourceSets {
+    main.java.srcDirs += 'src/main/kotlin'
+}
+
+flutter {
+    source = "../.."
 }
