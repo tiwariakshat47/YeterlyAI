@@ -5,7 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:http/http.dart' as http;
+import '../services/asl_interpreter_service.dart';
+import '../models/prediction_result.dart';
 
 class HomePage extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -22,11 +25,18 @@ class _HomePageState extends State<HomePage> {
   bool _isStreaming = false;
   bool _isProcessing = false;
   final ImagePicker _picker = ImagePicker();
+  late ASLInterpreterService _interpreter;
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
+    _initializeInterpreter();
+  }
+
+  Future<void> _initializeInterpreter() async {
+    _interpreter = ASLInterpreterService();
+    await _interpreter.initialize();
   }
 
   Future<void> _initializeCamera() async {
@@ -51,6 +61,7 @@ class _HomePageState extends State<HomePage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -61,88 +72,79 @@ class _HomePageState extends State<HomePage> {
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  Future<void> _processImage(String imagePath, String mode) async {
+  Future<void> _processImage(String imagePath) async {
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
 
     try {
-      final bytes = await File(imagePath).readAsBytes();
-      final base64Image = base64Encode(bytes);
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _showError('User not authenticated');
-        return;
-      }
-
-      final token = await user.getIdToken();
-
-      final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/api/translate'), // Android emulator localhost
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'image': base64Image,
-          'mode': mode,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-        _showTranslationResult(result);
-      } else {
-        _showError('Server error: ${response.statusCode}');
-      }
+      print("Starting local processing...");
+      final result = await _interpreter.processImage(File(imagePath));
+      _showTranslationResult(result);
     } catch (e) {
+      print("Error in _processImage: $e");
       _showError('Failed to process image: $e');
     } finally {
-      setState(() => _isProcessing = false);
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
   Future<void> _captureAndTranslate() async {
     try {
+      print("Starting image capture");
       final XFile? image = await _controller.takePicture();
       if (image != null) {
-        await _processImage(image.path, 'capture');
+        print("Image captured: ${image.path}");
+        await _processImage(image.path);
       }
     } catch (e) {
+      print("Error in _captureAndTranslate: $e");
       _showError('Failed to capture image: $e');
     }
   }
 
   Future<void> _pickAndTranslateImage() async {
     try {
+      print("Starting image picker");
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        await _processImage(image.path, 'upload');
+        print("Image picked: ${image.path}");
+        await _processImage(image.path);
       }
     } catch (e) {
+      print("Error in _pickAndTranslateImage: $e");
       _showError('Failed to pick image: $e');
     }
   }
 
-  void _showTranslationResult(Map<String, dynamic> result) {
+  void _showTranslationResult(PredictionResult result) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Translation Result'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Translation: ${result['translation']}'),
-            Text(
-                'Confidence: ${(result['confidence'] * 100).toStringAsFixed(1)}%'
-            ),
-            const SizedBox(height: 20),
-            _buildRatingBar(result['translation_id']),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Translation: ${result.prediction}',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              _buildRatingBar(result.prediction),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -158,14 +160,16 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         const Text('How accurate was this translation?'),
+        const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(5, (index) {
-            return IconButton(
+          children: List.generate(
+            5,
+                (index) => IconButton(
               icon: const Icon(Icons.star_border),
               onPressed: () => _submitRating(translationId, index + 1),
-            );
-          }),
+            ),
+          ),
         ),
       ],
     );
@@ -179,7 +183,7 @@ class _HomePageState extends State<HomePage> {
       final token = await user.getIdToken();
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/api/survey'),
+        Uri.parse('https://asl-backend-dsjk.onrender.com/api/survey'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -188,7 +192,7 @@ class _HomePageState extends State<HomePage> {
           'translation_id': translationId,
           'rating': rating,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         Navigator.pop(context);
@@ -196,28 +200,6 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (e) {
       _showError('Failed to submit rating: $e');
-    }
-  }
-
-  Future<void> _toggleStreaming() async {
-    setState(() => _isStreaming = !_isStreaming);
-
-    if (_isStreaming) {
-      _startStreaming();
-    }
-  }
-
-  Future<void> _startStreaming() async {
-    while (_isStreaming) {
-      try {
-        final XFile image = await _controller.takePicture();
-        await _processImage(image.path, 'stream');
-        await Future.delayed(const Duration(milliseconds: 500));
-      } catch (e) {
-        _showError('Streaming error: $e');
-        setState(() => _isStreaming = false);
-        break;
-      }
     }
   }
 
@@ -245,46 +227,52 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: Column(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: _buildCameraPreview(),
+            ),
+            _buildControls(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraPreview() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: AspectRatio(
+        aspectRatio: _controller.value.aspectRatio,
+        child: CameraPreview(_controller),
+      ),
+    );
+  }
+
+  Widget _buildControls() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: _isProcessing
+          ? const Center(child: CircularProgressIndicator())
+          : Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           Expanded(
-            child: AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
-              child: CameraPreview(_controller),
+            child: ElevatedButton.icon(
+              onPressed: _captureAndTranslate,
+              icon: const Icon(Icons.camera),
+              label: const Text('Capture'),
             ),
           ),
-          if (_isProcessing)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: CircularProgressIndicator(),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _captureAndTranslate,
-                    icon: const Icon(Icons.camera),
-                    label: const Text('Capture'),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _toggleStreaming,
-                    icon: Icon(_isStreaming ? Icons.stop : Icons.play_arrow),
-                    label: Text(_isStreaming ? 'Stop Stream' : 'Start Stream'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isStreaming ? Colors.red : null,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _pickAndTranslateImage,
-                    icon: const Icon(Icons.image),
-                    label: const Text('Upload'),
-                  ),
-                ],
-              ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _pickAndTranslateImage,
+              icon: const Icon(Icons.image),
+              label: const Text('Upload'),
             ),
+          ),
         ],
       ),
     );
