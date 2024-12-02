@@ -6,6 +6,11 @@ from tensorflow.keras.models import load_model
 from flask_cors import CORS
 import logging
 
+
+import sys
+print("Python executable:", sys.executable)
+print("Python version:", sys.version)
+
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
@@ -47,10 +52,10 @@ def upload_file():
         app.logger.debug(f"File saved at {img_path}")
 
         # Preprocess the image
-        from tensorflow.keras.utils import load_img, img_to_array
-        img = load_img(img_path, target_size=(IMG_HEIGHT, IMG_WIDTH))
-        img_array = img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize the image
+        from PIL import Image
+        img = Image.open(img_path).resize((IMG_HEIGHT, IMG_WIDTH))
+        img_array = np.array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
 
         # Make prediction
         predictions = model.predict(img_array)
