@@ -41,6 +41,7 @@ class _ImageSelectionState extends State<ImageSelection> {
     }
   }
 
+  //this is function akshat added to send image to flask server deployment
   Future<void> sendImageToServer(Uint8List imageBytes, String fileName) async {
   const String url = "http://127.0.0.1:5000/"; // Ensure the Flask server is running here
   print("Starting image upload...");
@@ -48,7 +49,7 @@ class _ImageSelectionState extends State<ImageSelection> {
   try {
     final request = http.MultipartRequest("POST", Uri.parse(url));
 
-    // Attach the file as bytes
+    //attaching file as bytes
     request.files.add(http.MultipartFile.fromBytes(
       'file',
       imageBytes,
@@ -63,7 +64,8 @@ class _ImageSelectionState extends State<ImageSelection> {
       final responseBody = await response.stream.bytesToString();
       print("Prediction result: $responseBody");
       setState(() {
-        predictionResult = responseBody; // Update prediction result
+        //tells us what the prediction result is
+        predictionResult = responseBody; 
       });
     } else {
       print("Error from server: ${response.statusCode}");
@@ -95,7 +97,7 @@ class _ImageSelectionState extends State<ImageSelection> {
           children: [
             imageBytes == null
                 ? const Text("No image selected")
-                : Image.memory(imageBytes!, height: 200), // Display image from bytes
+                : Image.memory(imageBytes!, height: 200),
             const SizedBox(height: 16.0),
             predictionResult == null
                 ? const Text("No prediction yet")
