@@ -10,7 +10,7 @@ import sys
 #print used Device
 print(f"Device used: {torch.cuda.get_device_name(0)}")
 
-# Define transforms for the training data and testing data
+#transforms
 train_path='asl_alphabet_train'
 valid_path='asl_alphabet_valid'
 
@@ -26,7 +26,7 @@ test_transforms = transforms.Compose([transforms.Resize((224,224)),
                                       transforms.Normalize([0.485, 0.456, 0.406],
                                                             [0.229, 0.224, 0.225])])
 
-# load data to loaders
+#load data to loaders
 train_data = datasets.ImageFolder(train_path, transform=train_transforms)
 test_data = datasets.ImageFolder(valid_path, transform=test_transforms)
 
@@ -35,29 +35,27 @@ testloader = torch.utils.data.DataLoader(test_data, batch_size=512)
 
 model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.DEFAULT)
 
-# Freeze parameters of the tarined network 
 for param in model.parameters():
     param.requires_grad = False
 
-# define new classifier and append it to network but remember to have a 29-neuron output layer for our two classes.
+#define new classifier and append it to network but remember to have a 29-neuron output layer for our two classes.
 model.classifier= nn.Sequential(nn.Dropout(p=0.6, inplace=False),
                                 nn.Linear(in_features=1280, out_features=29, bias=True),
                                 nn.LogSoftmax(dim=1))
 
-# unlock last three blocks before the classifier(last layer).
+#unlock last three blocks before the classifier(last layer).
 for p in model.features[-3:].parameters():
     p.requires_grad = True  
     
-# choose your loss function
+#choose your loss function
 criterion = nn.NLLLoss()
 
-# define optimizer to train only the classifier and the previous three block.
 optimizer = optim.Adam([{'params':model.features[-1].parameters()},
                         {'params':model.features[-2].parameters()},
                         {'params':model.features[-3].parameters()},
                         {'params':model.classifier.parameters()}], lr=0.0005)
 
-# define Learning Rate scheduler to decrease the learning rate by multiplying it by 0.1 after each epoch on the data.
+
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -105,7 +103,6 @@ if training:
 
                         test_loss += batch_loss.item()
 
-                        # Calculate accuracy
                         ps = torch.exp(props)
                         top_p, top_class = ps.topk(1, dim=1)
                         equals = top_class == labels.view(*top_class.shape)
@@ -127,17 +124,15 @@ if training:
         scheduler.step()
         step=0
     
-    model_scripted = torch.jit.script(model) # Export to TorchScript
-    model_scripted.save('test_model.pt') # Save
+    model_scripted = torch.jit.script(model) 
+    model_scripted.save('test_model.pt')
     
 if training:
     exit()
     
-#turn model to evaluation mode
 model = torch.jit.load('test_model.pt')
 model.eval()
 
-#load some of the test data 
 test_data = datasets.ImageFolder(valid_path,transforms.Compose([transforms.ToTensor()]))
 testloader = torch.utils.data.DataLoader(test_data, batch_size=5000, shuffle=True)
 images , labels=next( iter(testloader) )
@@ -146,11 +141,9 @@ accuracy = 0
 for index in range(len(images)):
     test_img=images[index]
 
-    #normalize image as in the training data
     t_n=transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
     test_img=t_n(test_img).unsqueeze(0).cuda()
 
-    #classify image using our model
     res = torch.exp(model(test_img))
 
     #invert class_to_idx keys to values and viceversa.
