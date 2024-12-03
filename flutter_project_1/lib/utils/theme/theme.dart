@@ -19,7 +19,7 @@ class AppTheme {
     fontFamily: 'Nunito',
     brightness: Brightness.dark,
     primaryColor: Colors.indigo[600],
-    scaffoldBackgroundColor: Colors.black,
+    scaffoldBackgroundColor: Colors.grey[900],
     textTheme: AppTextTheme.darkTextTheme,
     elevatedButtonTheme: AppElevatedButtonTheme.darkElevatedButtonTheme,
   );

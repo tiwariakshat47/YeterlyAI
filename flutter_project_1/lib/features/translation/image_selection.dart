@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project_1/utils/constants/image_strings.dart';
+import 'package:flutter_project_1/utils/helpers/helper_functions.dart';
 import 'package:flutter_project_1/features/data_collection/data_collection.dart';
 import 'package:flutter_project_1/features/translation/prediction.dart';
 import 'package:image_picker/image_picker.dart';
@@ -37,51 +39,70 @@ class _ImageSelectionState extends State<ImageSelection> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = AppHelperFunctions.isDarkMode(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Image Selection"),
+        title: Image.asset(dark ? AppImages.darkAppLogo : AppImages.lightAppLogo, height: 50.0),
+        centerTitle: true,
         leading: IconButton(
           onPressed: () {
             Navigator.pop(context);
           },
           icon: const Icon(Icons.arrow_back),
         ),
+        backgroundColor: Colors.transparent,
       ),
       body: Center(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            image == null ? Text("No image selected") : Image.file(image!),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) {
-                      return PredictionScreen();
-                    },
-                  ),
-                );
-              },
-              style: ButtonStyle(
-                backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
-                padding: WidgetStatePropertyAll(EdgeInsets.only(
-                  left: 15.0,
-                  top: 10.0,
-                  right: 15.0,
-                  bottom: 10.0,
-                )),
+        child: Padding(
+          padding: const EdgeInsets.only(
+            top: 10.0,
+            left: 24.0,
+            bottom: 100.0,
+            right: 24.0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20.0),
+              Text("Image Selection", style: Theme.of(context).textTheme.headlineMedium),
+              Expanded(
+                child: image == null ? SizedBox(height: 200.0, child: Align(alignment: Alignment.center, child: Text("No image selected"))) : Image.file(image!),
               ),
-              child: Container(
+              Align(
                 alignment: Alignment.bottomCenter,
-                width: 100.0,
-                child: Text("prediction", style: Theme.of(context).textTheme.labelSmall),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) {
+                          return PredictionScreen();
+                        },
+                      ),
+                    );
+                  },
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
+                    padding: WidgetStatePropertyAll(EdgeInsets.only(
+                      left: 15.0,
+                      top: 10.0,
+                      right: 15.0,
+                      bottom: 10.0,
+                    )),
+                  ),
+                  child: Container(
+                    alignment: Alignment.center,
+                    width: 100.0,
+                    child: Text("Predict", style: Theme.of(context).textTheme.labelSmall),
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       floatingActionButton: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           FloatingActionButton(

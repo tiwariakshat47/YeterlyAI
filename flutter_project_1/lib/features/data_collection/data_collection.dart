@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:flutter_project_1/utils/constants/image_strings.dart';
+import 'package:flutter_project_1/utils/helpers/helper_functions.dart';
+import 'package:flutter_project_1/features/translation/image_selection.dart';
 
 const List<String> alphabet = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
 
@@ -16,6 +19,8 @@ class _DataCollectionScreenState extends State<DataCollectionScreen> {
   final ImagePicker picker = ImagePicker();
 
   bool _isImagePickerActive = false;
+  bool _isImageUploaded = false; // Tracks if the image has been uploaded
+
   Future<void> chooseFromGallery() async {
     if (_isImagePickerActive) {
       print("Image picker is already active. Ignoring this request.");
@@ -27,6 +32,7 @@ class _DataCollectionScreenState extends State<DataCollectionScreen> {
       if (pickedFile != null) {
         setState(() {
           image = File(pickedFile.path);
+          _isImageUploaded = true; // Set to true when an image is uploaded
           print("Image selected");
         });
       } else {
@@ -41,15 +47,18 @@ class _DataCollectionScreenState extends State<DataCollectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = AppHelperFunctions.isDarkMode(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Upload Image for Data Collection"),
+        title: Image.asset(dark ? AppImages.darkAppLogo : AppImages.lightAppLogo, height: 50.0),
+        centerTitle: true,
         leading: IconButton(
           onPressed: () {
             Navigator.pop(context);
           },
-          icon: const Icon(Icons.arrow_back),
+        icon: const Icon(Icons.arrow_back),
         ),
+        backgroundColor: Colors.transparent,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -57,8 +66,10 @@ class _DataCollectionScreenState extends State<DataCollectionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              Text("Upload Image for Data Collection", style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 20.0),
               /// Letter Selection
-              Text("Select Letter", style: Theme.of(context).textTheme.headlineMedium),
+              Text("Select Letter", style: Theme.of(context).textTheme.headlineSmall),
               SizedBox(height: 10),
               LetterDropdownMenu(),
               // AlphabetGrid(),
@@ -68,32 +79,43 @@ class _DataCollectionScreenState extends State<DataCollectionScreen> {
                 child: image == null ? Text("") : Image.file(image!),
               ),
               /// Upload Image Button
-              ElevatedButton(
-                onPressed: chooseFromGallery,
-                style: ButtonStyle(
-                  backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
-                  padding: WidgetStatePropertyAll(EdgeInsets.only(
-                    left: 15.0,
-                    top: 10.0,
-                    right: 15.0,
-                    bottom: 10.0,
-                  )),
+              if (!_isImageUploaded) // Show only if image is not uploaded
+                ElevatedButton(
+                  onPressed: chooseFromGallery,
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
+                    padding: WidgetStatePropertyAll(EdgeInsets.only(
+                      left: 15.0,
+                      top: 10.0,
+                      right: 15.0,
+                      bottom: 10.0,
+                    )),
+                  ),
+                  child: Text("Upload Image", style: Theme.of(context).textTheme.labelSmall),
                 ),
-                child: Text("Upload Image", style: Theme.of(context).textTheme.labelSmall),
-              ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ButtonStyle(
-                  backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
-                  padding: WidgetStatePropertyAll(EdgeInsets.only(
-                    left: 15.0,
-                    top: 10.0,
-                    right: 15.0,
-                    bottom: 10.0,
-                  )),
+              if (_isImageUploaded) // Show only if image is uploaded
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) {
+                          return ImageSelection();
+                        },
+                      ),
+                    );
+                  },
+                  style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
+                    padding: WidgetStatePropertyAll(EdgeInsets.only(
+                      left: 15.0,
+                      top: 10.0,
+                      right: 15.0,
+                      bottom: 10.0,
+                    )),
+                  ),
+                  child: Text("Submit", style: Theme.of(context).textTheme.labelSmall),
                 ),
-                child: Text("Submit", style: Theme.of(context).textTheme.labelSmall),
-              ),
             ],
           ),
         ),

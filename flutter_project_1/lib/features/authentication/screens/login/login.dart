@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project_1/features/authentication/screens/login/signup.dart';
 import 'package:flutter_project_1/features/translation/image_selection.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 import 'package:flutter_project_1/utils/constants/image_strings.dart';
@@ -23,7 +24,7 @@ class LoginScreen extends StatelessWidget {
             children: [
               /// Logo, Title
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Image(
                     height: 150, image: AssetImage(dark ? AppImages.darkAppLogo : AppImages.lightAppLogo),
@@ -84,7 +85,22 @@ class LoginScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16.0),
                       /// Create Account Button
-                      SizedBox(width: double.infinity, child: OutlinedButton(onPressed: (){}, child: Text('Create Account', style: Theme.of(context).textTheme.bodySmall))),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: (){
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) {
+                                  return SignupScreen();
+                                },
+                              ),
+                            );
+                          },
+                          child: Text('Create Account', style: Theme.of(context).textTheme.bodySmall),
+                        ),
+                      ),
                       const SizedBox(height: 32.0),
                     ],
                   ),
