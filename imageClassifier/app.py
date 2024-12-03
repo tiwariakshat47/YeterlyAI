@@ -4,24 +4,23 @@ from flask import Flask, request, render_template
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
 
-# Initialize Flask app
+#flask app
 app = Flask(__name__)
 
-# Load the trained model
+#load model
 model = load_model("asl_classifier.h5")
 
-# Define the image size for the model
+#define the image size for the model
 IMG_HEIGHT, IMG_WIDTH = 224, 224
 
-# Class names (ensure this matches your directory structure)
+#class names (ensure this matches your directory structure)
 class_names = sorted(os.listdir('dataset/train'))
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     prediction = None
-    image_url = None  # Initialize image_url
+    image_url = None  
     if request.method == 'POST':
-        # Check if a file was uploaded
         if 'file' not in request.files:
             return "No file part"
 
@@ -29,16 +28,16 @@ def upload_file():
         if file.filename == '':
             return "No selected file"
 
-        # Save the uploaded file temporarily
+        #save file tempor
         img_path = os.path.join("static", file.filename)
         file.save(img_path)
 
-        # Preprocess the image
+        #preprocess
         img = image.load_img(img_path, target_size=(IMG_HEIGHT, IMG_WIDTH))
         img_array = image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0) / 255.0  # Normalize the image
 
-        # Make prediction
+        #predict
         predictions = model.predict(img_array)
         predicted_class = class_names[np.argmax(predictions)]
 
