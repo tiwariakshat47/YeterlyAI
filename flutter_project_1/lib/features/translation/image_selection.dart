@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_project_1/features/about.dart';
+import 'package:flutter_project_1/features/authentication/screens/login/login.dart';
 import 'package:flutter_project_1/utils/constants/image_strings.dart';
 import 'package:flutter_project_1/utils/helpers/helper_functions.dart';
 import 'package:flutter_project_1/features/data_collection/data_collection.dart';
@@ -39,7 +41,7 @@ class _ImageSelectionState extends State<ImageSelection> {
 
   @override
   Widget build(BuildContext context) {
-    final dark = AppHelperFunctions.isDarkMode(context);
+    var dark = AppHelperFunctions.isDarkMode(context);
     return Scaffold(
       appBar: AppBar(
         title: Image.asset(dark ? AppImages.darkAppLogo : AppImages.lightAppLogo, height: 50.0),
@@ -52,12 +54,13 @@ class _ImageSelectionState extends State<ImageSelection> {
         ),
         backgroundColor: Colors.transparent,
       ),
+      endDrawer: SettingsDrawer(),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.only(
             top: 10.0,
             left: 24.0,
-            bottom: 100.0,
+            bottom: 115.0,
             right: 24.0,
           ),
           child: Column(
@@ -72,15 +75,22 @@ class _ImageSelectionState extends State<ImageSelection> {
                 alignment: Alignment.bottomCenter,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) {
-                          return PredictionScreen();
-                        },
-                      ),
-                    );
-                  },
+                    if (image != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) {
+                            return PredictionScreen(image: image);
+                          },
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text(
+                            "Please select or take an image first")),
+                      );
+                    }
+                },
                   style: ButtonStyle(
                     backgroundColor: WidgetStatePropertyAll(Colors.deepPurple.shade700),
                     padding: WidgetStatePropertyAll(EdgeInsets.only(
@@ -101,13 +111,64 @@ class _ImageSelectionState extends State<ImageSelection> {
           ),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          FloatingActionButton(
-            heroTag: "UploadData",
-            onPressed: () {
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: "TakePhoto",
+                onPressed: takePhoto,
+                tooltip: "Take Photo",
+                child: Icon(Icons.camera),
+              ),
+              SizedBox(height: 10.0),
+              Text("Camera", style: Theme.of(context).textTheme.bodyLarge),
+            ],
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton(
+                heroTag: "ChooseFromGallery",
+                onPressed: chooseFromGallery,
+                tooltip: "Choose from Gallery",
+                child: Icon(Icons.photo_library),
+              ),
+              SizedBox(height: 10.0),
+              Text("Photo Library", style: Theme.of(context).textTheme.bodyLarge),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SettingsDrawer extends StatelessWidget {
+  const SettingsDrawer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      width: 250.0,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          SizedBox(
+            height: 100.0,
+            child: DrawerHeader(
+              decoration: BoxDecoration(color: Colors.deepPurple[100]),
+              child: Text("Settings", style: Theme.of(context).textTheme.headlineMedium),
+            ),
+          ),
+          ListTile(
+            title: Text("Upload for Data Collection", style: Theme.of(context).textTheme.titleLarge),
+            onTap: () {
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -117,21 +178,35 @@ class _ImageSelectionState extends State<ImageSelection> {
                 ),
               );
             },
-            tooltip: "Upload Photo for Data Collection",
-            child: Icon(Icons.file_upload_outlined),
           ),
-          FloatingActionButton(
-            heroTag: "TakePhoto",
-            onPressed: takePhoto,
-            tooltip: "Take Photo",
-            child: Icon(Icons.camera),
+          ListTile(
+            title: Text("About Us", style: Theme.of(context).textTheme.titleLarge),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return AboutScreen();
+                  },
+                ),
+              );
+            },
           ),
-          FloatingActionButton(
-            heroTag: "ChooseFromGallery",
-            onPressed: chooseFromGallery,
-            tooltip: "Choose from Gallery",
-            child: Icon(Icons.photo_library),
-          ),
+          ListTile(
+            title: Text("Log out", style: Theme.of(context).textTheme.titleLarge),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) {
+                    return LoginScreen();
+                  },
+                ),
+              );
+            },
+          )
         ],
       ),
     );

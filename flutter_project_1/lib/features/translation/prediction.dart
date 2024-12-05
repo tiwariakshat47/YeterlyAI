@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_project_1/utils/constants/image_strings.dart';
 import 'package:flutter_project_1/utils/helpers/helper_functions.dart';
 import 'package:flutter_project_1/features/translation/image_selection.dart';
+import 'dart:io';
 
 class PredictionScreen extends StatelessWidget {
-  const PredictionScreen({super.key});
+  final File? image;
+  const PredictionScreen({super.key, required this.image});
 
   @override
   Widget build(BuildContext context) {
@@ -37,17 +39,12 @@ class PredictionScreen extends StatelessWidget {
               Container(
                 margin: const EdgeInsets.all(5.0),
                 padding: const EdgeInsets.all(10.0),
-                decoration: BoxDecoration(
-                  color: dark ? Colors.grey[600] : Colors.white54,
-                  border: Border.all(
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.all(Radius.circular(15.0)),
-                ),
                 width: 400.0,
                 height: 400.0,
                 child: Center(
-                  child: Text("image here"),
+                  child: image != null
+                    ? Image.file(image!)
+                    : const Text("No image available"),
                 ),
               ),
               SizedBox(height: 10.0),
