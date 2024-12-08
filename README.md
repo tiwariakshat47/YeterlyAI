@@ -13,8 +13,8 @@ perform the command: **pip3 install -r requirements.txt**
 Then after installing flutter: https://docs.flutter.dev/get-started/install
 
 You can navigate to the asl_translator folder and do: 
-**flutter pub get
-flutter run**
+**flutter pub get** then do 
+**flutter run**
 
 If you wish to train the model yourself with different images, navigate to the imageClassifier file by doing: 
 **cd imageClassifier**
