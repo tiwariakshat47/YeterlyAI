@@ -8,7 +8,7 @@ By doing: git clone https://github.com/tiwariakshat47/YeterlyAI.git
 
 ### Download requirements
 Navigate to the asl_backend folder by doing: **cd asl_backend**
-perform the command: **pip3 install -r requirements.txt **
+perform the command: **pip3 install -r requirements.txt** 
 
 Then after installing flutter: https://docs.flutter.dev/get-started/install
 
