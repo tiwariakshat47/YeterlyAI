@@ -1,7 +1,30 @@
 # YeterlyAI
 
+## How to run the project
 
+Docker containerization coming soon. For now you will need to:
+### Clone the repo
+By doing: git clone https://github.com/tiwariakshat47/YeterlyAI.git
 
+### Download requirements
+Navigate to the asl_backend folder by doing: **cd asl_backend**
+perform the command: **pip3 install -r requirements.txt **
+
+Then after installing flutter: https://docs.flutter.dev/get-started/install
+
+You can navigate to the asl_translator folder and do: 
+**flutter pub get
+flutter run**
+
+If you wish to train the model yourself with different images, navigate to the imageClassifier file by doing: 
+**cd imageClassifier**
+
+Then you need to install the requirements here by performing:
+**pip3 install -r requirements.txt**
+Then you can run the main.py file (**python3 main.py**)
+
+To run the flask server (within the imageClassifier folder):
+**python3 app.py**
 
 
 ## Future Deployment to TestFlight
