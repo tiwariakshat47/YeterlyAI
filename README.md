@@ -1,6 +1,21 @@
 # YeterlyAI
 
-## How to run the project
+This mobile application serves as a way to address the following issues:
+ - Over 70 million deaf people worldwide use sign language, large reliance on human interpreters, however interpreters are not always available (not scalable)
+ - No real time solution: limiting ability to communicate with non-sign language speakers
+
+We have been proposed a solution to this through YeterlyAI's - Translation from Turkish Sign Language (TSL) to text (overarching). 
+
+However a more applicable, 10 week scope that we have been tasked with is to create a mobile application to provide instant ASL to English text translation. This way we the team at YeterlyAI could perform integration to create a Turkish Sign Language translator
+What is our user base?
+ - Non-ASL Users
+ - ASL Learners
+ - ASL Users
+
+All of these new features allow for sign language users to be able to gain access to the opportunities they might not have been able to have access to without an interpreter.  
+
+
+## Development Environment Setup
 
 Docker containerization coming soon. For now you will need to:
 ### Clone the repo
