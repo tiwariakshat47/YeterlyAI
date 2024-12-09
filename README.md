@@ -6,7 +6,7 @@ This mobile application serves as a way to address the following issues:
 
 We have been proposed a solution to this through YeterlyAI's - Translation from Turkish Sign Language (TSL) to text (overarching). 
 
-However a more applicable, 10 week scope that we have been tasked with is to create a mobile application to provide instant ASL to English text translation. This way we the team at YeterlyAI could perform integration to create a Turkish Sign Language translator
+However a more applicable, 10 week project-scope, that we have been tasked with is to create a mobile application to provide instant ASL to English text translation. This way the team at YeterlyAI could perform integration to create a Turkish Sign Language translator
 What is our user base?
  - Non-ASL Users
  - ASL Learners
