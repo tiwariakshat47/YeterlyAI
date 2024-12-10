@@ -6,6 +6,9 @@ import math
 from tqdm import tqdm
 from colorama import Fore,Style
 import sys
+import matplotlib.pyplot as plt
+import numpy as np
+import onnx
 
 #print used Device
 print(f"Device used: {torch.cuda.get_device_name(0)}")
@@ -13,6 +16,7 @@ print(f"Device used: {torch.cuda.get_device_name(0)}")
 #transforms
 train_path='asl_alphabet_train'
 valid_path='asl_alphabet_valid'
+test_path='asl_alphabet_test'
 
 train_transforms = transforms.Compose([transforms.Resize((224,224)),
                                        transforms.RandomRotation(30),
@@ -28,10 +32,10 @@ test_transforms = transforms.Compose([transforms.Resize((224,224)),
 
 #load data to loaders
 train_data = datasets.ImageFolder(train_path, transform=train_transforms)
-test_data = datasets.ImageFolder(valid_path, transform=test_transforms)
+validation_data = datasets.ImageFolder(valid_path, transform=test_transforms)
 
 trainloader = torch.utils.data.DataLoader(train_data, batch_size=512, shuffle=True)
-testloader = torch.utils.data.DataLoader(test_data, batch_size=512)
+validationloader = torch.utils.data.DataLoader(validation_data, batch_size=512)
 
 model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.DEFAULT)
 
@@ -50,27 +54,34 @@ for p in model.features[-3:].parameters():
 #choose your loss function
 criterion = nn.NLLLoss()
 
-optimizer = optim.Adam([{'params':model.features[-1].parameters()},
+# define optimizer to train only the classifier and the previous three block.
+parameters = [{'params':model.features[-1].parameters()},
                         {'params':model.features[-2].parameters()},
                         {'params':model.features[-3].parameters()},
-                        {'params':model.classifier.parameters()}], lr=0.0005)
+                        {'params':model.classifier.parameters()}]
 
+learning_rate = 0.0005
+optimizer = optim.Adam(params=parameters, lr=learning_rate)
 
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
+# define Learning Rate scheduler to decrease the learning rate by multiplying it by 0.1 after each epoch on the data.
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model.to(device)
-epochs = 1
+epochs = 40
 step = 0
 running_loss = 0
-print_every = 1000
+print_every = 500
 trainlossarr=[]
-testlossarr=[]
+vallossarr=[]
 oldacc=0
+max_unfreezing = 15
 
 steps=math.ceil(len(train_data)/(trainloader.batch_size))
 
 training = False
+
+accs = []
 
 if training:
     for epoch in range(epochs):
@@ -92,16 +103,16 @@ if training:
             running_loss += loss.item()
 
             if (step % print_every == 0) or (step==steps):
-                test_loss = 0
+                val_loss = 0
                 accuracy = 0
                 model.eval()
                 with torch.no_grad():
-                    for inputs, labels in testloader:
+                    for inputs, labels in validationloader:
                         inputs, labels = inputs.to(device), labels.to(device)
                         props = model.forward(inputs)
                         batch_loss = criterion(props, labels)
 
-                        test_loss += batch_loss.item()
+                        val_loss += batch_loss.item()
 
                         ps = torch.exp(props)
                         top_p, top_class = ps.topk(1, dim=1)
@@ -114,26 +125,73 @@ if training:
                 tqdm.write(f"Epoch ({epoch+1} of {epochs}) ... "
                     f"Step  ({step:3d} of {steps}) ... "
                     f"Train loss: {running_loss/print_every:.3f} ... "
-                    f"Test loss: {test_loss/len(testloader):.3f} ... "
-                    f"Test accuracy: {accuracy/len(testloader):.3f} ")
+                    f"Validation loss: {val_loss/len(validationloader):.3f} ... "
+                    f"Validation accuracy: {accuracy/len(validationloader):.3f} ")
                 trainlossarr.append(running_loss/print_every)
-                testlossarr.append(test_loss/len(testloader))
+                vallossarr.append(val_loss/len(validationloader))
+                accs.append(accuracy/len(validationloader))
                 running_loss = 0
-                
-            
+        
+        num_params = len(parameters)    
+        if num_params < max_unfreezing:   
+            prev_layer = {'params':model.features[num_params * -1].parameters()}
+            parameters.append(prev_layer)
+            parameters[-1], parameters[-2] = parameters[-2], parameters[-1]
+            optimizer = optim.Adam(params=parameters, lr=learning_rate)
+        
         scheduler.step()
         step=0
+        
     
     model_scripted = torch.jit.script(model) 
     model_scripted.save('test_model.pt')
     
 if training:
-    exit()
+    epochs_range = range(len(accs))
+    plt.figure(figsize=(12, 8))
+
+    # Accuracy plot
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs_range, accs, label='Accuracy')
+    plt.legend(loc='lower right')
+    plt.title('Accuracy')
+
+    # Loss plot
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs_range, trainlossarr, label='Training Loss')
+    plt.plot(epochs_range, vallossarr, label='Validation Loss')
+    plt.legend(loc='upper right')
+    plt.title('Training and Validation Loss')
     
+    plt.show()
+    exit()
+
 model = torch.jit.load('test_model.pt')
+model.to('cpu')
+input_shape = (1, 3, 224, 224)
+
+example_input = torch.randn(input_shape, requires_grad=True)
+model(example_input)
+
+input_names = ["input0"]
+output_names = ["output0"]
+
+dynamic_axes = {'input0': {0: 'batch'}, 'output0': {0: 'batch'}}
+
+torch_out = torch.onnx.export(
+    model, example_input, 'model.onnx', export_params=True, input_names=input_names, output_names=output_names, 
+    dynamic_axes=dynamic_axes, operator_export_type=torch.onnx.OperatorExportTypes.ONNX
+)
+
+onnx_model = onnx.load("model.onnx")
+onnx.checker.check_model(onnx_model)
+
+model.to(device)
+#turn model to evaluation mode
 model.eval()
 
-test_data = datasets.ImageFolder(valid_path,transforms.Compose([transforms.ToTensor()]))
+#load some of the test data 
+test_data = datasets.ImageFolder(test_path,test_transforms)
 testloader = torch.utils.data.DataLoader(test_data, batch_size=5000, shuffle=True)
 images , labels=next( iter(testloader) )
 
@@ -141,8 +199,8 @@ accuracy = 0
 for index in range(len(images)):
     test_img=images[index]
 
-    t_n=transforms.Normalize([0.485, 0.456, 0.406],[0.229, 0.224, 0.225])
-    test_img=t_n(test_img).unsqueeze(0).cuda()
+    #normalize image as in the training data
+    test_img=test_img.unsqueeze(0).cuda()
 
     res = torch.exp(model(test_img))
 
